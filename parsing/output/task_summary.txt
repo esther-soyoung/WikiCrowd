@@ -1,0 +1,3 @@
+How many DOIDs in total: 10897
+How many DOID has ICD10 links: 4751
+How many ICD10 links in total: 4238
