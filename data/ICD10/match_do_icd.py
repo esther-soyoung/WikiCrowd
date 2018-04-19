@@ -1,5 +1,5 @@
 import json
-from requests import *
+import requests
 
 #- Functions -#
 """ Reqeusts ICD information to ICD10 API
@@ -8,10 +8,13 @@ from requests import *
 def requestICD(icd_code):
   part1 = "http://icd10api.com/?code="
   part2 = "&desc=short&r=json"
-  address = part1 + icd_code[9:] + part2
+  address = part1 + icd_code[8:] + part2
   r = requests.get(address)
   r.raise_for_status()
-  icd_name = r["Description"]
+  rr = r.json()
+  if "Error" in rr:
+    return "No response from ICD10API"
+  icd_name = rr["Description"]
   return icd_name
 
 """ Define a function that parse ICD json file
@@ -40,7 +43,7 @@ def compareName(do_name, icd_name, do_syns):
     exact_match = False
   for do_syn in do_syns:
     do_syn.lower()
-    if icd_name == do_sym:
+    if do_syn.decode('utf-8') == icd_name.decode('utf-8'):
       exact_match = True
   if (exact_match):
     return "Exact Match"
@@ -61,17 +64,20 @@ w.write("{\n")
 part1 = "http://icd10api.com/?code="
 part2 = "&desc=short&r=json"
 
+do_syns = []
+
 for line in d:
   #- Extract targets from doid_parsed
   icd_codes = []
-  do_syns = []
   done = False
   if line == "\n":
     continue;
   if line[:4] == "DOID":
-    do_code = line
+    do_code = str.rstrip(line, "\n")
+    do_syns = []
   elif line[:6] == "[Name]":
     do_name = line[7:]
+    do_name = str.rstrip(do_name, "\n")
   elif line[:10] == "[Synonyms]":
     line = line[10:]
     do_syns = str.split(line, "\t")
@@ -89,6 +95,8 @@ for line in d:
     w.write("\t\t],\n")
     w.write("\t\tICD match:[\n")
     for icd_code in icd_codes:
+      if icd_code[:3] != "ICD":
+        break
       icd_name = requestICD(icd_code)
       w.write("\t\t\t{\n")
       w.write("\t\t\t\tICD code: " + icd_code + ",\n")
